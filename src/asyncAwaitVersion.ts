@@ -1,3 +1,4 @@
+import { printError } from "./errors";
 import { NEWS_URL, WEATHER_URL, getCommentsUrl } from "./config";
 import { printComments, printHeader, printNews, printWeather } from "./display";
 import { fetchJson } from "./fetchJson";
@@ -91,9 +92,8 @@ async function main(): Promise<void> {
     await runParallel();
     await runRace();
     console.log("\nDone.");
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error(`Something failed: ${message}`);
+    } catch (err) {
+    printError(err);
   } finally {
     // finally always runs, whether the code above succeeded or failed
     console.log("(finished)");

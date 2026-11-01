@@ -1,3 +1,4 @@
+import { printError } from "./errors";
 import { NEWS_URL, WEATHER_URL, getCommentsUrl } from "./config";
 import { printComments, printHeader, printNews, printWeather } from "./display";
 import { fetchJson } from "./fetchJson";
@@ -94,4 +95,4 @@ runChain()
   .then(runAll)
   .then(runRace)
   .then(() => console.log("\nDone."))
-  .catch((err: Error) => console.error(`Something failed: ${err.message}`));
+  .catch(printError);
