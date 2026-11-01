@@ -8,3 +8,7 @@ export const WEATHER_URL =
 
 // News: DummyJSON posts (free, no API key needed)
 export const NEWS_URL = "https://dummyjson.com/posts?limit=5";
+
+// Comments for one post: used by the "dependent call" in each version
+export const getCommentsUrl = (postId: number) =>
+  `https://dummyjson.com/posts/${postId}/comments`;
