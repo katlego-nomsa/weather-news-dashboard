@@ -1,30 +1,17 @@
 import https from "https";
 import { NEWS_URL, WEATHER_URL, getCommentsUrl } from "./config";
 import { printComments, printHeader, printNews, printWeather } from "./display";
-import { ApiError, networkError, printError, sourceName } from "./errors";
 import { CommentsResponse, NewsResponse, WeatherResponse } from "./types";
 
 // Node-style callback: the first argument is an error (or null), the second is the data
-type Callback<T> = (error: ApiError | null, data?: T) => void;
+type Callback<T> = (error: Error | null, data?: T) => void;
 
 /** Fetches a URL with the https module and gives the parsed JSON to a callback. */
 function fetchJson<T>(url: string, callback: Callback<T>): void {
-  const source = sourceName(url);
-
-  // Make sure the callback runs only once, even if several things go wrong
-  let finished = false;
-  const done: Callback<T> = (error, data) => {
-    if (finished) return;
-    finished = true;
-    callback(error, data);
-  };
-
   const request = https.get(url, (res) => {
     if (res.statusCode !== 200) {
       res.resume(); // discard the body so the connection closes
-      return done(
-        new ApiError(source, "http", `The server replied with status ${res.statusCode}`, res.statusCode)
-      );
+      return callback(new Error(`Request failed with status ${res.statusCode}`));
     }
 
     let raw = "";
@@ -34,21 +21,17 @@ function fetchJson<T>(url: string, callback: Callback<T>): void {
       try {
         parsed = JSON.parse(raw);
       } catch {
-        return done(new ApiError(source, "parse", "The server's reply was not valid JSON"));
+        return callback(new Error("Response was not valid JSON"));
       }
-      done(null, parsed);
+      callback(null, parsed);
     });
   });
 
   // Give up if the server takes longer than 10 seconds
-  request.setTimeout(10000, () =>
-    request.destroy(new ApiError(source, "timeout", "The server took longer than 10 seconds to respond"))
-  );
+  request.setTimeout(10000, () => request.destroy(new Error("Request timed out")));
 
   // Network problems (no internet, DNS failure, timeout)
-  request.on("error", (err: NodeJS.ErrnoException) =>
-    done(err instanceof ApiError ? err : networkError(url, err))
-  );
+  request.on("error", (err) => callback(err));
 }
 
 // ---------------------------------------------------------------
@@ -60,14 +43,16 @@ printHeader("CALLBACK VERSION");
 
 fetchJson<WeatherResponse>(WEATHER_URL, (weatherError, weather) => {
   if (weatherError || !weather) {
-    return printError(weatherError);
+    console.error(`Weather failed: ${weatherError?.message}`);
+    return;
   }
   printHeader("Weather");
   printWeather(weather);
 
   fetchJson<NewsResponse>(NEWS_URL, (newsError, news) => {
     if (newsError || !news) {
-      return printError(newsError);
+      console.error(`News failed: ${newsError?.message}`);
+      return;
     }
     printHeader("News headlines");
     printNews(news.posts);
@@ -77,7 +62,8 @@ fetchJson<WeatherResponse>(WEATHER_URL, (weatherError, weather) => {
 
     fetchJson<CommentsResponse>(getCommentsUrl(firstPost.id), (commentsError, comments) => {
       if (commentsError || !comments) {
-        return printError(commentsError);
+        console.error(`Comments failed: ${commentsError?.message}`);
+        return;
       }
       printHeader("Comments on the top story");
       printComments(firstPost.title, comments.comments);
