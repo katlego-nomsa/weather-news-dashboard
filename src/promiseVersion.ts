@@ -1,18 +1,14 @@
+import { printError } from "./errors";
 import { NEWS_URL, WEATHER_URL, getCommentsUrl } from "./config";
 import { printComments, printHeader, printNews, printWeather } from "./display";
 import { fetchJson } from "./fetchJson";
 import { CommentsResponse, NewsResponse, Post, WeatherResponse } from "./types";
 
-// ---------------------------------------------------------------
-// PART 1: Promise chain (weather -> news -> comments)
-// Same dependent calls as the callback version, but flat.
-// One .catch() at the end handles an error from ANY step.
-// ---------------------------------------------------------------
+
 function runChain(): Promise<void> {
   printHeader("PART 1: Promise chain");
 
-  // A chain's weakness: to use data from an earlier step later on,
-  // it has to be saved in a variable outside the chain.
+  
   let firstPost: Post | undefined;
 
   return fetchJson<WeatherResponse>(WEATHER_URL)
@@ -35,12 +31,7 @@ function runChain(): Promise<void> {
     });
 }
 
-// ---------------------------------------------------------------
-// PART 2: Promise.all()
-// Weather and news do not depend on each other, so start both at
-// once and wait until BOTH are finished. If either one fails,
-// the whole Promise.all() fails.
-// ---------------------------------------------------------------
+
 function runAll(): Promise<void> {
   printHeader("PART 2: Promise.all (weather + news at the same time)");
   const start = Date.now();
@@ -56,16 +47,12 @@ function runAll(): Promise<void> {
   });
 }
 
-// ---------------------------------------------------------------
-// PART 3: Promise.race()
-// Start both requests and use whichever one finishes FIRST.
-// The slower request keeps running, but we ignore its result.
-// ---------------------------------------------------------------
+
 function runRace(): Promise<void> {
   printHeader("PART 3: Promise.race (fastest response wins)");
   const start = Date.now();
 
-  // Label each result so we can tell which request won
+  
   const weatherRequest = fetchJson<WeatherResponse>(WEATHER_URL).then((data) => ({
     source: "weather" as const,
     data,
@@ -85,13 +72,11 @@ function runRace(): Promise<void> {
   });
 }
 
-// ---------------------------------------------------------------
-// Run the three parts one after another
-// ---------------------------------------------------------------
+
 printHeader("PROMISE VERSION");
 
 runChain()
   .then(runAll)
   .then(runRace)
   .then(() => console.log("\nDone."))
-  .catch((err: Error) => console.error(`Something failed: ${err.message}`));
+    .catch(printError);
