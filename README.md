@@ -1,51 +1,124 @@
-Topic: React TS
-Submission Date: 23 September 2026
-Time: 09:00 am
+# Async Weather & News Dashboard
 
-Please submit by pushing to your github repository and creating a pull request to your mentor
+A Node.js + TypeScript project that fetches weather data and news headlines from public APIs, and shows the **same job written three ways**: callbacks, promises, and async/await. It also demonstrates `Promise.all()` and `Promise.race()`.
 
-Title: ReactTS UI Challenge
+## APIs used
+- **Weather:** [Open-Meteo](https://open-meteo.com/) (free, no API key)
+- **News and comments:** [DummyJSON posts](https://dummyjson.com/docs/posts) (free, no API key)
 
-Objective
-The objective of this task is to assess your understanding of ReactTS concepts and your ability to design and implement user interfaces (UI) using ReactTS components. In this challenge, you will be creating your own UI component from scratch, demonstrating your knowledge of React best practices, component structure, and reusability.
+No API keys or `.env` file are needed.
 
-This is the official first task of the curriculum, based on React Lesson 2, focusing mainly on design implementation, styling and screen responsiveness.
+## Getting started
+Requires Node.js 18 or newer.
 
-Choose one of the designs in the folder and implement the UI exactly as it is.
+```bash
+npm install
+npm run callback   # callback version
+npm run promise    # promise version
+npm run async      # async/await version
+```
 
-Instructions:
-Create a vite ReactTS project in the directory
-Choose one of the files (design), delete the rest. (your repo should the design you have chosen).
-Using ReactTS, create a front-end implementation of the UI design.
-Pay close attention to the layout, colours, typography, and overall visual elements to ensure accurate replication.
-You may use your own icons, images, and typography that closely resemble those used in the UI design.
-Use appropriate ReactTS components and styling techniques to achieve the desired design.
-Implement interactivity and responsiveness (from mobile to desktop) where applicable.
-Test your implementation thoroughly to ensure proper functionality.
-Make sure all reappearing code is set up as reusable components to ensure readability and maintainability
-Host your work using Github pages , firebase or any hosting site of your choice.
+Other scripts:
 
-Notes: 
-While replicating the design, focus on visual fidelity and user experience.
-Use your creativity to find icons, images, typography and colors (color codes) that closely resemble those used in the UI design.
-Apply your knowledge of ReactTS and front-end development best practices to accomplish the task.
-Make use of reusable components wherever possible.
-Feel free to use any additional libraries or tools that you are comfortable with.
-Be attentive to details and strive for accuracy in your implementation.
-Remember, the purpose of this task is to assess your ability to translate a design into a functional UI using ReactTS. If you have any questions or need clarification, please don't hesitate to reach out.
-Stick to plain CSS for styling
+```bash
+npm run build      # type-check and compile to dist/
+```
 
-Evaluation Criteria:
-Accuracy of the design
-Was the design layout properly imitated
-Were the same colors maintained
-Were similar fonts to those in the design used
-Were all elements  imitated, is there an element on the design that’s missing on the implementation
-Page interactivity
-Do links change color when hovered over
-Do buttons change color when hovered over
-Utilisation of ReactTS features
-Did developer create own components
-Were developer-created components re-used for similar UI elements
-Responsiveness of the page
-Is the page responsive to different web view sizes
+To change the location, edit `LATITUDE` and `LONGITUDE` in `src/config.ts`.
+
+## Project structure
+```
+src/
+├── config.ts             # API addresses and location
+├── types.ts              # TypeScript types for the API responses
+├── display.ts            # Shared printing functions (same output for all versions)
+├── errors.ts             # ApiError type and readable error printing
+├── fetchJson.ts          # Promise-based https helper (used by versions 2 and 3)
+├── callbackVersion.ts    # Version 1: callbacks (has its own callback-based helper)
+├── promiseVersion.ts     # Version 2: promises, Promise.all, Promise.race
+└── asyncAwaitVersion.ts  # Version 3: async/await with try...catch
+```
+
+## What each version does
+Every version fetches weather, then news, then the comments on the first news post. The last request needs the post's ID from the news result, so these three requests **depend on each other** and must run in order.
+
+### 1. Callback version (`npm run callback`)
+Uses Node's `https` module. Each request takes a callback that runs when the response arrives. Because each step needs the previous result, the calls are nested inside each other. This is **callback hell**: the code drifts to the right and the error check is repeated at every level.
+
+### 2. Promise version (`npm run promise`)
+`fetchJson()` returns a Promise. The three dependent calls become a flat `.then()` chain with one `.catch()` at the end. It also includes:
+- **`Promise.all()`**: starts weather and news at the same time and waits for both. If either fails, the whole thing fails.
+- **`Promise.race()`**: starts both and uses whichever finishes first.
+
+### 3. Async/await version (`npm run async`)
+The same logic written to read top to bottom. Errors are handled with `try...catch...finally`. Part 2 times a sequential run against `Promise.all()` to show the speed-up.
+
+## Error handling
+All three versions use one `ApiError` type with a **source** (which request failed), a **kind** (`network`, `timeout`, `http` or `parse`) and a readable message. `printError()` prints every error in the same format. Requests give up after 10 seconds.
+
+## Sample output
+
+> Values such as temperatures, headlines and timings will differ each time you run it.
+
+### Callback version
+```
+PASTE YOUR REAL OUTPUT OF npm run callback HERE
+```
+
+### Promise version
+```
+PASTE YOUR REAL OUTPUT OF npm run promise HERE
+```
+
+### Async/await version
+```
+PASTE YOUR REAL OUTPUT OF npm run async HERE
+```
+
+### Error output (same format in all three versions)
+Network error (weather address changed to a non-existent host):
+```
+[ERROR]
+  Source:  api.open-meteo.invalid/v1/forecast
+  Type:    network
+  Message: Could not find the server. Check your internet connection or the web address.
+```
+
+HTTP error (news address changed to a page that does not exist):
+```
+[ERROR]
+  Source:  dummyjson.com/postz
+  Type:    http
+  Status:  404
+  Message: The server replied with status 404
+```
+
+## Comparison
+
+| | Callbacks | Promises | Async/await |
+|---|---|---|---|
+| Dependent calls | Nested pyramid | Flat `.then()` chain | Reads top to bottom |
+| Error handling | Check in every callback | One `.catch()` | `try...catch` |
+| Sharing data between steps | Variables from outer scopes | Needs a variable outside the chain | Normal variables |
+| Running in parallel | Manual bookkeeping | `Promise.all()` | `await Promise.all()` |
+| Readability | Hardest | Better | Best |
+
+## Learning outcomes
+
+**The event loop.** Node runs your JavaScript on a single thread. A network request does not block it: Node hands the request off, keeps running other code, and when the response arrives, the callback (or promise handler) is queued and runs when the thread is free. All three styles are different ways of saying "run this code later, when the data arrives."
+
+**Callbacks** are the original pattern, but dependent calls nest deeper with every step and each level needs its own error check.
+
+**Promises** represent a value that will arrive later. They can be chained flat, and one `.catch()` handles an error from any step. A weakness is sharing data between steps in a chain.
+
+**Async/await** is built on promises. `await` pauses only the current function, not the whole program, so code reads in order while Node stays free to do other work.
+
+**`Promise.all()` vs sequential `await`.** Awaiting two independent requests one after another takes about the sum of both times. `Promise.all()` starts both at once and takes about as long as the slower one. In the async version, the "Sequential vs Promise.all" timing in the sample output shows this.
+
+**`Promise.race()`** resolves or rejects with whichever promise settles first. The slower request still runs, but its result is ignored.
+
+**Consistent error handling.** Converting low-level errors (like `ENOTFOUND`) into one `ApiError` type with a readable message means every version reports problems the same way.
+
+## Notes
+- Requests are made with Node's built-in `https` module (no `fetch` or `axios`), as the task requires.
+- The APIs are free public services and may occasionally return errors such as 503. The error handling is designed to show a clear message in that case.
